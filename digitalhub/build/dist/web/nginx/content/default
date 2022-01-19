@@ -1,0 +1,14 @@
+
+gzip_types text/css application/x-javascript image/svg+xml;
+
+location / {
+    index index.html;
+    try_files $uri $uri/index.html $uri.html /index.php$is_args$args;
+    allow all;
+}
+
+location ~ \.php$ {
+    try_files .~srcfile @php;
+    allow all;
+}
+

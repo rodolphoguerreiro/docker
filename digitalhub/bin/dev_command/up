@@ -1,0 +1,14 @@
+
+if [ -z "`docker volume ls -q -f 'name=digitalhubdev-mysql-volume'`" ]; then
+    echo 'No MySQL volume file found, first time here? Run "bin/dev setup" to setup the most important stuff';
+    exit 1;
+fi
+
+
+if [ -z "${DOMAINSUFFIX}" ]; then
+    dc yml build/dist/docker-compose-suffix.yml;
+fi
+
+dc mode 'up -d --no-recreate';
+dc cmd "$@";
+

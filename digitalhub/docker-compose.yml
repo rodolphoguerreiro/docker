@@ -1,0 +1,145 @@
+version: '2'
+networks: {}
+volumes:
+  digitalhubdev-mysql-volume:
+    external: true
+
+services:
+  db:
+    image: percona
+    volumes:
+      - ./conf.d/mysql:/etc/mysql/conf.d:ro
+      - digitalhubdev-mysql-volume:/var/lib/mysql:rw
+    environment:
+      - MYSQL_ROOT_PASSWORD
+    network_mode: bridge
+    ports:
+      - 127.0.0.1:3306:3306
+
+  mailcatch:
+    image: mailhog/mailhog
+    network_mode: bridge
+
+  php70:
+    build:
+      context: build/dist/php70
+    links:
+      - db
+      - mailcatch
+      - redis
+      - rabbitmq
+      - elasticsearch
+    network_mode: bridge
+    environment:
+      - GROUPID
+      - USERID
+  php56:
+    build:
+      context: build/dist/php56
+    links:
+      - db
+      - mailcatch
+      - redis
+      - rabbitmq
+      - elasticsearch
+    network_mode: bridge
+    environment:
+      - GROUPID
+      - USERID
+  php71:
+    build:
+      context: build/dist/php71
+    links:
+      - db
+      - mailcatch
+      - redis
+      - rabbitmq
+    network_mode: bridge
+    environment:
+      - GROUPID
+      - USERID
+  php72:
+    build:
+      context: build/dist/php72
+    links:
+      - db
+      - mailcatch
+      - redis
+      - rabbitmq
+      - elasticsearch
+    network_mode: bridge
+    environment:
+      - GROUPID
+      - USERID
+
+  redis:
+    image: redis:alpine
+    network_mode: bridge
+
+  web:
+    build:
+      context: build/dist/web
+    environment:
+      - DOMAINSUFFIX
+    links:
+      - mailcatch
+      - php70:fpm
+      - php70:fpm70
+      - php56:fpm56
+      - php71:fpm71
+      - php72:fpm72
+      - rabbitmq
+      - kibana
+      - elasticsearch
+    network_mode: bridge
+  ssl:
+    build:
+      context: build/dist/ssl
+    ports:
+        - "127.0.0.1:80:80"
+        - "127.0.0.1:443:443"
+    network_mode: bridge
+  rabbitmq:
+    environment:
+      - RABBITMQ_ERLANG_COOKIE
+      - RABBITMQ_DEFAULT_USER
+      - RABBITMQ_DEFAULT_PASS
+      - RABBITMQ_DEFAULT_VHOST
+    image: rabbitmq:3.5-management
+    network_mode: bridge
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+  elasticsearch:
+    build:
+      context: build/dist/elasticsearch
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - ELASTIC_PASSWORD=admin
+      - ELASTIC_USERNAME=admin
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9300:9300"
+      - "9200:9200"
+    network_mode: bridge
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.4.0
+    environment:
+    - SERVER_NAME=kibana.localhost
+    - ELASTICSEARCH_URL=http://elasticsearch:9200/
+    - ELASTICSEARCH_HOST=elasticsearch
+    - ELASTICSEARCH_PASSWD=admin
+    - ELASTICSEARCH_USERNAME=digitalhub
+    - ELASTICSEARCH_PORT=9200
+    ports:
+    - 5601:5601
+    links:
+    - elasticsearch
+    depends_on:
+    - elasticsearch
+    network_mode: bridge

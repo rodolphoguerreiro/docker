@@ -1,0 +1,32 @@
+
+# Directory
+set $customer "default";
+set $project "default";
+if ( $host ~ "^([^\.]+)\.([^\.]+).*[DOMAINSUFFIX]$"  ) {
+     set $customer "$1";
+     set $project "$2";
+}
+
+set $dev_base_root /data;
+set $dev_customer_root $dev_base_root/$customer;
+set $dev_root $dev_customer_root/$project;
+
+
+# Allowed pub directories in order of importance directory, last is most important
+set $htdocs "pub";
+if ( -e $dev_root/httpdocs ) {
+    set $htdocs "httpdocs";
+}
+if ( -e $dev_root/htdocs ) {
+    set $htdocs "htdocs";
+}
+if ( -e $dev_root/public ) {
+    set $htdocs "public";
+}
+if ( -e $dev_root/web ) {
+    set $htdocs "web";
+}
+if ( -e $dev_root/magento ) {
+    set $htdocs "magento";
+}
+

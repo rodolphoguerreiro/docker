@@ -1,0 +1,10 @@
+version: '3'
+services:
+    getdoc_netlab:
+        image: rodolphoguerreiro/gitlab-ci-ant
+        container_name: ant_server
+        restart: always
+        ports:
+            - 8081:8080
+        volumes:
+            - /var/www/getdoc-netlab:/getdoc-netlab

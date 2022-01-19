@@ -1,0 +1,242 @@
+#!/bin/bash
+
+init() {
+
+    DEV_SELF=$(basename $0);
+
+    DEV_PATH=$(realpath $(dirname $0));
+    DEV_WORKPATH=$(dirname ${DEV_PATH});
+    DEV_PROJECT=$(basename ${DEV_WORKPATH});
+    DEV_USERDIR=${PWD};
+
+    DEV_COMMANDPATH=${DEV_PATH}/dev_command;
+
+    DEV_WORKSPACE_PATH="${DEV_WORKPATH}/workspace";
+    DEV_WORKSPACE="`echo ${DEV_WORKSPACE_PATH} | sed -e 's/\\//\\\\\//g'`";
+    DEV_PROJECTPATH=`echo ${DEV_USERDIR} | sed -e "s/${DEV_WORKSPACE}\///"`;
+
+    DEV_PHP='php70';
+
+    DEV_INTERACTIVE=false;
+    if [ -t "0" ] && [ -t "1" ]; then
+        DEV_INTERACTIVE=true;
+    fi
+
+    DEV_SUDO='';
+    if [ -z "`groups | grep docker`" ]; then
+        DEV_SUDO='sudo';
+    fi
+
+    dc env conf/mysql; # fallback
+    dc env .env;
+
+    DEV_YML='';
+    dc yml 'docker-compose.yml';
+    dc yml_if 'build/dist/docker-compose-blackfire.yml' 'conf/blackfire';
+    dc yml_if 'docker-custom.yml' 'docker-custom.yml';
+    dc yml_if 'build/dist/docker-compose-varnish.yml' 'conf/varnish.vcl' || dc yml 'build/dist/docker-compose-no-varnish.yml';
+    dc yml_os;
+    dc yml_ssh;
+
+    dc mode 'run --rm';
+
+    DEV_DOCKEROPTS='';
+    DEV_COMMAND=$1;
+    DEV_HOSTNAME='';
+
+    if [ "${DEV_PROJECTPATH}" == "${DEV_USERDIR}" ]; then
+        # Not in WORKSPACE
+        DEV_PROJECTPATH='';
+    else
+        DEV_HOSTNAME=`echo ${DEV_PROJECTPATH} | sed -e 's/\//\./g' -e 's/^\([^\.]*\.[^\.]*\)\.\{0,1\}.*$/\\1.dev/'`;
+        if [ ".." != "`echo ${DEV_HOSTNAME} | sed -e 's/[^\.]//g'`" ]; then
+            DEV_HOSTNAME='';
+        fi
+    fi
+
+    # Check which php version to use
+    dc php;
+
+    # Check if command exists
+    DEV_EXISTS=false;
+    if [ -n "${DEV_COMMAND}" ] && [ -f "${DEV_COMMANDPATH}/${DEV_COMMAND}" ]; then
+        DEV_EXISTS=true;
+    fi
+
+    # Check if a custom command exists and is executable
+    DEV_CUSTOM_EXISTS=false;
+    if [ -n "${DEV_COMMAND}" ] && [ -x "${DEV_WORKSPACE_PATH}/bin/${DEV_COMMAND}" ]; then
+        DEV_CUSTOM_EXISTS=true;
+    fi
+}
+
+dc() {
+
+    show() {
+        echo `getsudo`docker-compose ${DEV_YML} ${DEV_MODE} \
+            ${DEV_DOCKEROPTS} \
+            ${DEV_SERVICE} \
+            "${DEV_CMD}";
+    }
+
+    getsudo() {
+        # Check if user is in docker group
+        [ -n "${DEV_SUDO}" ] && echo -n ${DEV_SUDO}' ';
+    }
+
+    run() {
+        cmd=`show`;
+        ${cmd};
+        return $?
+    }
+
+    opt() {
+        DEV_DOCKEROPTS=${DEV_DOCKEROPTS}' '"$@";
+    }
+
+    service() {
+        DEV_SERVICE="$@";
+    }
+
+    yml_if() {
+        local yml=$1;
+        shift;
+
+        while [ -n "$1" ]; do
+            if [ ! -e ${DEV_WORKPATH}/$1 ]; then
+                return 1;
+            fi
+            shift;
+        done
+
+        yml ${yml};
+        return 0;
+    }
+
+    yml_all() {
+        yml_if 'build/dist/docker-compose-blackfireclient.yml' 'conf/blackfire';
+        yml 'build/dist/docker-compose-dbclient.yml';
+        yml 'build/dist/docker-compose-mytop.yml';
+        yml 'build/dist/docker-compose-ngrok.yml';
+        yml 'build/dist/docker-compose-ctop.yml';
+    }
+
+    yml() {
+        if [ -n "`echo $DEV_YML | grep $1`" ]; then
+            return;
+        fi
+        DEV_YML=${DEV_YML}' -f '${DEV_WORKPATH}'/'$1;
+    }
+
+    yml_os() {
+        if [[ "$(uname)" == 'Darwin' ]]; then
+            DEV_YML=${DEV_YML}' -f '${DEV_WORKPATH}'/docker-compose-osx.yml';
+        elif [[ -n "`uname -r | grep Microsoft`" ]]; then
+            DEV_YML=${DEV_YML}' -f '${DEV_WORKPATH}'/docker-compose-wsl.yml';
+        else
+            DEV_YML=${DEV_YML}' -f '${DEV_WORKPATH}'/docker-compose-linux.yml';
+        fi
+    }
+
+    yml_ssh() {
+        if [ -n "${SSH_AUTH_SOCK}" ]; then
+            yml build/dist/docker-compose-ssh.yml;
+        fi
+    }
+
+    mode() {
+        DEV_MODE="$@";
+    }
+
+    cmd() {
+        DEV_CMD="$@";
+    }
+
+    php_versions() {
+        grep -h '^\s*- php[0-9][0-9]:fpm' ${DEV_WORKPATH}/docker-*.yml | sed -e 's/\(\s*\|:.*$\|-\)//g' | sort -ur;
+    }
+
+    php() {
+        local available="`php_versions`";
+        check() {
+            local base=$1;
+            for a in ${available}; do
+                if [ -e ${base}/.${a} ]; then
+                    DEV_PHP=${a};
+                    return 0;
+                fi
+            done
+
+            return 1;
+        }
+
+        local project=${DEV_WORKSPACE_PATH}/${DEV_PROJECTPATH};
+        if [ -n "${DEV_PROJECTPATH}" ]; then
+            while [ "${project}" != "${DEV_WORKSPACE_PATH}" ]; do
+                check ${project} && return 0;
+                project=$(dirname ${project});
+            done
+        fi
+
+        check ${DEV_WORKSPACE_PATH} && return 0;
+        return 1;
+    }
+
+    env() {
+        local envfile=${DEV_WORKPATH}/$1 a='' c='';
+        if [ ! -e ${envfile} ]; then
+           return 1;
+        fi
+        for a in `cat ${envfile}`; do
+            if [ "${a:0:1}" == "#" ]; then
+                continue;
+            fi
+            c='export '${a};
+            ${c};
+        done
+    }
+
+    "$@";
+    return $?
+}
+
+exec_command() {
+    # Change to command directory
+    # This is so all docker-compose commands work out of the box
+    cd ${DEV_COMMANDPATH};
+
+    # Load command
+    # Can exit if implemented itself
+    . ./${DEV_COMMAND} "$@";
+
+    # Execute command
+    dc run;
+    exit $?;
+}
+
+exec_custom() {
+    # Change to command directory
+    # This is so all docker-compose commands work out of the box
+    cd ${DEV_COMMANDPATH};
+
+    # Load command
+    # Can exit if implemented itself
+    . ./custom ${DEV_COMMAND} "$@";
+
+    dc run;
+    exit $?;
+}
+
+usage() {
+    DEV_COMMAND=usage;
+    exec_command;
+}
+
+main() {
+    init "$@";
+    shift;
+
+    ${DEV_EXISTS} && exec_command "$@" || ${DEV_CUSTOM_EXISTS} && exec_custom "$@" || usage;
+}
+
+main "$@";

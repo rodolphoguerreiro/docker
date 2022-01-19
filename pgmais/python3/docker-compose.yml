@@ -1,0 +1,16 @@
+version: "2"
+services:
+  webhook:
+    container_name: radar_email
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    networks:
+      - webhook
+    volumes:
+      - /etc/hosts:/etc/hosts
+
+networks:
+  webhook:
+    external:
+      name: trae

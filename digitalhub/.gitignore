@@ -1,0 +1,10 @@
+# Ignore this
+/workspace
+/mysql
+/dumps
+/custom
+/build/custom
+/docker-custom.yml
+/conf
+/.env
+

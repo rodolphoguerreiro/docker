@@ -1,0 +1,4 @@
+
+dc mode stop;
+dc cmd "$@";
+

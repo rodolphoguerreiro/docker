@@ -1,0 +1,8 @@
+server {
+    listen 80;
+    server_name *.silex[DOMAINSUFFIX];
+
+    include "content/base";
+    include "content/silex";
+}
+

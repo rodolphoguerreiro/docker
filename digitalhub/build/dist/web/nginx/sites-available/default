@@ -1,0 +1,8 @@
+server {
+    listen 80 default_server;
+    server_name [DOMAINSUFFIX];
+
+    include "content/base";
+    include "content/default";
+}
+

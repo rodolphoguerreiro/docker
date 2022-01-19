@@ -1,0 +1,17 @@
+version: '2'
+
+services:
+  varnish:
+    image: million12/varnish
+    network_mode: bridge
+    links:
+      - "web:web"
+      - "web:backend"
+    environment:
+      - CACHE_SIZE
+    volumes:
+      - ./conf/varnish.vcl:/etc/varnish/default.vcl
+  ssl:
+    links:
+      - "varnish:backend"
+

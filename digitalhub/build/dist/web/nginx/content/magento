@@ -1,0 +1,46 @@
+
+set $mageRunCode "";
+if ( $host ~ "^([^\.]+)\.([^\.]+)\.([^\.]+).*[DOMAINSUFFIX]$"  ) {
+     set $mageRunCode "$3";
+}
+
+gzip_types text/css application/x-javascript image/svg+xml;
+
+
+# Deny a lot
+location /app {
+    return 403;
+}
+location /downloader {
+    return 403;
+}
+location /var {
+    return 403;
+}
+location /shell {
+    return 403;
+}
+
+location /media {
+    allow all;
+}
+location /skin {
+    allow all;
+}
+
+location /api {
+    rewrite ^/api/rest /api.php?type=rest last;
+    rewrite ^/api/v2_soap /api.php?type=v2_soap last;
+    rewrite ^/api/soap /api.php?type=soap last;
+}
+
+location / {
+    try_files $uri $uri/index.html $uri.html /index.php$is_args$args;
+    allow all;
+}
+
+location ~ \.php$ {
+    # Next will never match and send to right php backend
+    try_files .~srcfile @php;
+    allow all;
+}

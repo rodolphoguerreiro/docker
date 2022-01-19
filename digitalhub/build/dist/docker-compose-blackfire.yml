@@ -1,0 +1,20 @@
+version: '2'
+services:
+  blackfire:
+    env_file:
+        - ./conf/blackfire
+    image: blackfire/blackfire
+    network_mode: bridge
+
+  php70:
+      links:
+          - blackfire
+  php56:
+      links:
+          - blackfire
+  php71:
+      links:
+          - blackfire
+  php72:
+      links:
+          - blackfire

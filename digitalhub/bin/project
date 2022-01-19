@@ -1,0 +1,87 @@
+#!/bin/sh
+
+wwwfolder=/var/www
+dockerpath=$wwwfolder/docker
+workspace=$dockerpath/workspace;
+projects=$wwwfolder/projects;
+
+helpus(){
+
+	echo "Usage: project <subcommand> [options] \n"
+    	echo "Subcommands:"
+    	echo "	list		- List all projects"
+    	echo "	build		- Build a project"
+	echo "			  params: (name_folder_project, php_version, git optional)"
+	echo "	remove		- Remove a project"
+    	echo ""
+    	echo "For help with each subcommand run:"
+    	echo "project <subcommand> -h|--help"
+    	echo ""
+}
+
+list () {
+	ls -la $workspace $projects
+}
+
+build () {
+	magento="$workspace/$1/magento";
+
+	if [ "$2" = "php56" ]; then
+		fullpath="${magento}/htdocs"
+	else
+		fullpath="${magento}2"
+	fi
+	
+	if [ ! -d "$workspace/$1" ]; then
+		echo -ne "Creating folder project..."
+		mkdir -p $fullpath
+		sleep 1
+		echo " OK!"
+	fi
+
+	if [ ! -z "$3" ]; then
+		echo "Cloning repository. Wait for the process..."
+		git clone $3 $fullpath
+	fi
+
+	if [ ! -z "$(ls -A ${fullpath})" ]; then
+		echo -ne "Copyng configuration files..."
+		sleep 1
+		if [ $(basename $fullpath) = 'htdocs' ]; then
+			echo '' > $magento/.$2
+			cp "${dockerpath}/files/local.xml" "${fullpath}/app/etc"
+		else
+			echo '' > $workspace/$1/.$2
+		fi
+		echo " OK!"
+	fi
+
+	echo -ne "Creating symbolic link..."	
+	ln -s $fullpath $projects/$1
+	sleep 1
+	echo " OK!"
+}
+
+remove () {
+	echo -ne "Removing project '${@}'..."
+	if [ -d "$workspace/$@" ]; then
+		rm -Rf "$workspace/$@" "$projects/$@"
+	fi
+	sleep 2
+	echo " OK!"
+}
+
+subcommand=$1
+case $subcommand in 
+	"" | "-h" | "--help") 
+		helpus #call funciton helpus
+	;;		
+	*)
+		shift
+		${subcommand} $@
+		if [ $? = 127 ]; then
+			echo "Error: '$1' is not a known subcommand."
+       			echo "Run 'project --help' for a list of known subcommands."
+       			exit 1
+		fi
+esac

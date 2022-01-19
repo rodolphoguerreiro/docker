@@ -1,0 +1,26 @@
+version: '2'
+services:
+  rabbitmq:
+    env_file:
+        - ./conf/rabbitmq
+    image: rabbitmq:3.5-management
+    network_mode: bridge
+    ports:
+        - "15672:15672"
+        - "5672:5672"
+
+  php70:
+      links:
+          - rabbitmq
+  php56:
+      links:
+          - rabbitmq
+  php71:
+      links:
+          - rabbitmq
+  php72:
+      links:
+          - rabbitmq
+  web:
+      links:
+          - rabbitmq

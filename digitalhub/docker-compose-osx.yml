@@ -1,0 +1,21 @@
+version: '2'
+
+services:
+  php70:
+    volumes:
+    - web-sync:/data:rw
+  php56:
+    volumes:
+    - web-sync:/data:rw
+  php71:
+    volumes:
+    - web-sync:/data:rw
+  php72:
+    volumes:
+    - web-sync:/data:rw
+  web:
+    volumes:
+    - web-sync:/data:ro
+volumes:
+  web-sync:
+    external: true

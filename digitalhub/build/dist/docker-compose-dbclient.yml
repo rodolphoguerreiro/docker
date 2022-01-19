@@ -1,0 +1,7 @@
+version: '2'
+services:
+  dbclient:
+    image: percona
+    links:
+        - db
+    network_mode: bridge
