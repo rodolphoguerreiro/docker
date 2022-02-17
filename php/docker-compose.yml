@@ -1,0 +1,17 @@
+version: '2'
+services:
+    project:
+        image: apache2:php5
+        restart: always
+        container_name: nome-projeto
+        environment:
+            - VIRTUAL_HOST=domain.com
+        ports:
+            - 8080:80
+        volumes:
+            - ${PWD}:/var/www/html
+            - /etc/hosts:/etc/hosts
+        extra_hosts:
+            - "production:192.168.0.1"
+            - "development:192.168.0.2"
+            - "staging:192.168.0.3"

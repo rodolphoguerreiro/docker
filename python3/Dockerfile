@@ -20,9 +20,4 @@ RUN apk add --no-cache mariadb-dev mysql-client gcc libffi libffi-dev build-base
 #RUN touch /root/.ssh/known_hosts
 #RUN ssh-keyscan git.pgd.to >> /root/.ssh/known_hosts
 
-#RUN git clone https://Guerreiro:96347009@git.pgd.to/pg/pg_miscellaneous.git \
-    #cd pg_miscellaneous \
-    #&& pip install mysqlclient \
-    #&& python3 setup.py install
-
 CMD python3 radar.py
