@@ -1,0 +1,13 @@
+version: "3"
+services:
+  webhook:
+    container_name: radar_email
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    networks:
+      - webhook
+    volumes:
+      - ${PWD}:/app
+
+docker run --rm -it -v ${PWD}:/app -w /app python:3 /bin/bash

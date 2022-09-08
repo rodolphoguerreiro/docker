@@ -1,7 +1,5 @@
 FROM python:alpine3.6
 
-MAINTAINER Rodolpho Guerreiro
-
 COPY . /opt/radar-email
 
 WORKDIR /opt/radar-email
